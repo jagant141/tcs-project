@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MoviesNow — Smart Movie Recommender</title>
+
+  <!-- Fonts: Bebas Neue (display) + Inter (body) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+
+  <style>
+    /* ══════════════════════════════════════════════════════════
+       DESIGN SYSTEM
+    ══════════════════════════════════════════════════════════ */
+    :root {
+      --ink:      #141414;
+      --ink2:     #1f1f1f;
+      --ink3:     #2b2b2b;
+      --border:   rgba(255,255,255,0.1);
+      --primary:  #E50914;
+      --primary2: #f40612;
+      --primary-bg: rgba(229,9,20,0.10);
+      --primary-bd: rgba(229,9,20,0.25);
+      --text:     #ffffff;
+      --muted:    #b3b3b3;
+      --muted2:   #808080;
+      --green:    #46d369;
+      --red:      #E50914;
+      --r:        8px;
+      --r-sm:     4px;
+      --font-d:   'Bebas Neue', sans-serif;
+      --font-b:   'Inter', sans-serif;
+      --ease:     cubic-bezier(.4,0,.2,1);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--ink);
+      color: var(--text);
+      font-family: var(--font-b);
+      font-weight: 300;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Atmospheric background ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(229,9,20,.12) 0%, transparent 60%),
+        radial-gradient(ellipse 40% 40% at 80% 80%, rgba(229,9,20,.05) 0%, transparent 60%);
+    }
+
+    /* Film-grain overlay */
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23g)' opacity='.03'/%3E%3C/svg%3E");
+      opacity: .6;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       LAYOUT
+    ══════════════════════════════════════════════════════════ */
+    .page {
+      position: relative; z-index: 1;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 64px 24px 80px;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       HEADER
+    ══════════════════════════════════════════════════════════ */
+    .header {
+      text-align: center;
+      margin-bottom: 56px;
+      animation: fadeDown .7s var(--ease) both;
+    }
+
+    .header-eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: .72rem; font-weight: 500; letter-spacing: .18em;
+      text-transform: uppercase; color: var(--primary);
+      background: var(--primary-bg);
+      border: 1px solid var(--primary-bd);
+      border-radius: 20px; padding: 4px 14px;
+      margin-bottom: 20px;
+    }
+
+    .header h1 {
+      font-family: var(--font-d);
+      font-size: clamp(4rem, 9vw, 6.5rem);
+      font-weight: 400;
+      line-height: 1.05;
+      letter-spacing: .02em;
+      color: var(--primary);
+      text-transform: uppercase;
+      margin-bottom: 14px;
+      text-shadow: 0 4px 24px rgba(229,9,20,0.4);
+    }
+
+    .header-sub {
+      font-size: 1.05rem; font-weight: 300;
+      color: var(--muted); max-width: 440px; margin: 0 auto;
+      line-height: 1.65;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       TECH BADGES
+    ══════════════════════════════════════════════════════════ */
+    .tech-strip {
+      display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;
+      margin-bottom: 48px;
+      animation: fadeDown .7s .1s var(--ease) both;
+    }
+
+    .tech-badge {
+      font-size: .72rem; font-weight: 500; letter-spacing: .06em;
+      color: var(--muted);
+      background: var(--ink2);
+      border: 1px solid var(--border);
+      border-radius: 20px; padding: 4px 12px;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       SEARCH
+    ══════════════════════════════════════════════════════════ */
+    .search-area {
+      max-width: 660px; margin: 0 auto 48px;
+      animation: fadeDown .7s .15s var(--ease) both;
+    }
+
+    .search-label {
+      display: block;
+      font-size: .78rem; font-weight: 500; letter-spacing: .1em;
+      text-transform: uppercase; color: var(--muted2);
+      margin-bottom: 10px;
+    }
+
+    .search-wrap { position: relative; }
+
+    .search-row {
+      display: flex;
+      background: var(--ink2);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      overflow: hidden;
+      transition: border-color .2s, box-shadow .2s;
+    }
+
+    .search-row:focus-within {
+      border-color: var(--primary-bd);
+      box-shadow: 0 0 0 4px rgba(229,9,20,.15);
+    }
+
+    #movieInput {
+      flex: 1; background: transparent; border: none; outline: none;
+      color: var(--text); caret-color: var(--primary);
+      font-family: var(--font-b); font-size: 1rem; font-weight: 400;
+      padding: 16px 22px;
+    }
+
+    #movieInput::placeholder { color: var(--muted); }
+
+    .search-btn {
+      background: var(--primary); border: none; cursor: pointer;
+      padding: 0 28px;
+      font-family: var(--font-b); font-size: .92rem; font-weight: 600;
+      color: #ffffff; letter-spacing: .02em;
+      display: flex; align-items: center; gap: 8px;
+      transition: background .18s, transform .1s;
+      white-space: nowrap;
+    }
+
+    .search-btn:hover  { background: var(--primary2); }
+    .search-btn:active { transform: scale(.97); }
+
+    .search-btn svg { transition: transform .2s; }
+    .search-btn:hover svg { transform: translateX(3px); }
+
+    /* ── Autocomplete ── */
+    .autocomplete {
+      position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+      background: var(--ink2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      overflow: hidden; list-style: none; z-index: 200;
+      box-shadow: 0 16px 48px rgba(0,0,0,.55);
+      animation: fadeDown .15s var(--ease) both;
+    }
+
+    .autocomplete li {
+      padding: 11px 20px; cursor: pointer;
+      font-size: .92rem; color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      transition: background .12s, color .12s;
+    }
+    .autocomplete li:last-child { border-bottom: none; }
+    .autocomplete li:hover { background: var(--primary-bg); color: var(--text); }
+
+    /* ══════════════════════════════════════════════════════════
+       FEEDBACK MESSAGES
+    ══════════════════════════════════════════════════════════ */
+    .feedback {
+      text-align: center; border-radius: var(--r);
+      padding: 14px 20px; font-size: .92rem;
+      max-width: 660px; margin: 0 auto 28px;
+      animation: fadeDown .3s var(--ease) both;
+    }
+
+    .feedback.error {
+      background: rgba(235,87,87,.1);
+      border: 1px solid rgba(235,87,87,.25);
+      color: #f08888;
+    }
+
+    /* ── Loading ── */
+    .loading {
+      text-align: center; padding: 64px 20px;
+      color: var(--muted); animation: fadeDown .3s var(--ease) both;
+    }
+
+    .spinner-ring {
+      width: 40px; height: 40px; margin: 0 auto 16px;
+      border: 2px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin .75s linear infinite;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       RESULTS
+    ══════════════════════════════════════════════════════════ */
+    .results { animation: fadeUp .4s var(--ease) both; }
+
+    .results-header {
+      text-align: center; margin-bottom: 32px;
+    }
+
+    .results-header h2 {
+      font-family: var(--font-d);
+      font-size: 1.7rem; font-weight: 300; font-style: italic;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .results-header h2 strong {
+      font-style: normal; font-weight: 600; color: var(--primary);
+    }
+
+    .results-header p {
+      font-size: .8rem; color: var(--muted2); margin-top: 6px;
+    }
+
+    /* ── Cards grid ── */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--ink2);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 22px;
+      display: flex; flex-direction: column; gap: 10px;
+      cursor: default;
+      transition: transform .22s var(--ease),
+                  border-color .22s, box-shadow .22s;
+      animation: fadeUp .4s var(--ease) both;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      border-color: var(--primary-bd);
+      box-shadow: 0 16px 40px rgba(229,9,20,.15);
+    }
+
+    .card-head {
+      display: flex; justify-content: space-between;
+      align-items: flex-start; gap: 10px;
+    }
+
+    .card-title {
+      font-family: var(--font-d);
+      font-size: 1.12rem; font-weight: 600; line-height: 1.3;
+      flex: 1;
+    }
+
+    .card-year {
+      font-size: .75rem; color: var(--muted2);
+      white-space: nowrap; padding-top: 3px;
+    }
+
+    .card-pills {
+      display: flex; flex-wrap: wrap; gap: 6px;
+    }
+
+    .pill {
+      font-size: .7rem; font-weight: 500; border-radius: 20px;
+      padding: 3px 10px; white-space: nowrap;
+    }
+
+    .pill-match {
+      background: var(--primary-bg);
+      border: 1px solid var(--primary-bd);
+      color: var(--primary);
+    }
+
+    .pill-rating {
+      background: rgba(111,207,151,.1);
+      border: 1px solid rgba(111,207,151,.2);
+      color: var(--green);
+    }
+
+    .card-genres {
+      font-size: .75rem; color: var(--muted2); line-height: 1.5;
+    }
+
+    .card-overview {
+      font-size: .83rem; color: rgba(237,232,223,.55);
+      line-height: 1.65; flex: 1;
+    }
+
+    /* Match meter */
+    .meter-wrap { display: flex; align-items: center; gap: 8px; }
+
+    .meter-bar {
+      flex: 1; height: 3px;
+      background: var(--ink3); border-radius: 99px; overflow: hidden;
+    }
+
+    .meter-fill {
+      height: 100%; border-radius: 99px;
+      background: linear-gradient(90deg, var(--primary) 0%, var(--primary2) 100%);
+      transition: width .6s var(--ease);
+    }
+
+    .meter-label {
+      font-size: .68rem; color: var(--muted2); white-space: nowrap;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       PIPELINE SECTION
+    ══════════════════════════════════════════════════════════ */
+    .pipeline-section {
+      margin-top: 72px;
+      border-top: 1px solid var(--border);
+      padding-top: 52px;
+    }
+
+    .section-title {
+      text-align: center;
+      font-family: var(--font-d);
+      font-size: 1.9rem; font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .section-sub {
+      text-align: center;
+      font-size: .88rem; color: var(--muted);
+      margin-bottom: 40px;
+    }
+
+    .pipeline {
+      display: flex; flex-direction: column; gap: 0;
+      max-width: 700px; margin: 0 auto;
+    }
+
+    .pipeline-step {
+      display: grid; grid-template-columns: 56px 1fr;
+      gap: 0 20px; position: relative;
+    }
+
+    /* vertical connector line */
+    .pipeline-step:not(:last-child) .step-num::after {
+      content: '';
+      position: absolute; left: 27px; top: 48px;
+      width: 2px; height: calc(100% - 48px + 24px);
+      background: linear-gradient(to bottom, var(--primary-bd), transparent);
+    }
+
+    .step-num {
+      position: relative;
+      width: 48px; height: 48px; flex-shrink: 0;
+      background: var(--primary-bg);
+      border: 1px solid var(--primary-bd);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-d); font-size: 1.15rem; font-weight: 400;
+      color: var(--primary);
+      margin-top: 4px;
+    }
+
+    .step-body { padding-bottom: 32px; }
+
+    .step-title {
+      font-size: .95rem; font-weight: 600;
+      margin-bottom: 4px; color: var(--text);
+    }
+
+    .step-desc {
+      font-size: .83rem; color: var(--muted); line-height: 1.6;
+    }
+
+    .step-tag {
+      display: inline-block; margin-top: 8px;
+      font-size: .68rem; font-weight: 500;
+      background: var(--ink3); border: 1px solid var(--border);
+      border-radius: 4px; padding: 2px 8px; color: var(--muted);
+      font-family: 'Courier New', monospace;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       FOOTER
+    ══════════════════════════════════════════════════════════ */
+    footer {
+      position: relative; z-index: 1;
+      text-align: center;
+      padding: 32px 20px;
+      border-top: 1px solid var(--border);
+      margin-top: 64px;
+      font-size: .78rem; color: var(--muted2);
+      letter-spacing: .04em;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       ANIMATIONS
+    ══════════════════════════════════════════════════════════ */
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ══════════════════════════════════════════════════════════
+       UTILITIES
+    ══════════════════════════════════════════════════════════ */
+    .hidden { display: none !important; }
+
+    /* ══════════════════════════════════════════════════════════
+       RESPONSIVE
+    ══════════════════════════════════════════════════════════ */
+    @media (max-width: 540px) {
+      .search-row  { flex-direction: column; }
+      .search-btn  { justify-content: center; padding: 14px; }
+      .cards       { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ── Header ── -->
+  <header class="header">
+    <div class="header-eyebrow">
+      <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+        <circle cx="5" cy="5" r="5"/>
+      </svg>
+      AI / ML · Content-Based Filtering
+    </div>
+    <h1>MoviesNow</h1>
+    <p class="header-sub">
+      Enter a movie you love and our AI will surface the most similar titles
+      from a database of 5,000 films — instantly.
+    </p>
+  </header>
+
+  <!-- ── Tech strip ── -->
+  <div class="tech-strip">
+    <span class="tech-badge">Python 3.11</span>
+    <span class="tech-badge">Flask</span>
+    <span class="tech-badge">Pandas</span>
+    <span class="tech-badge">Scikit-learn</span>
+    <span class="tech-badge">TF-IDF Vectorizer</span>
+    <span class="tech-badge">Cosine Similarity</span>
+    <span class="tech-badge">TMDB Dataset</span>
+  </div>
+
+  <!-- ── Search ── -->
+  <section class="search-area">
+    <label class="search-label" for="movieInput">Movie you enjoy</label>
+    <div class="search-wrap">
+      <div class="search-row">
+        <input id="movieInput" type="text" autocomplete="off"
+          placeholder="e.g. The Dark Knight, Inception, Iron Man …"/>
+        <button class="search-btn" onclick="getRecommendations()">
+          Suggest
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor"
+                  stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+      <ul id="autocomplete" class="autocomplete hidden"></ul>
+    </div>
+  </section>
+
+  <!-- ── Feedback / Loading ── -->
+  <div id="feedback" class="feedback error hidden"></div>
+
+  <div id="loading" class="loading hidden">
+    <div class="spinner-ring"></div>
+    <p>Finding films you'll love…</p>
+  </div>
+
+  <!-- ── Results ── -->
+  <section id="results" class="results hidden">
+    <div class="results-header">
+      <h2 id="resultsTitle"></h2>
+      <p id="resultsCount"></p>
+    </div>
+    <div id="cards" class="cards"></div>
+  </section>
+
+  <!-- ── ML Pipeline explainer ── -->
+  <section class="pipeline-section">
+    <h2 class="section-title">How It Works</h2>
+    <p class="section-sub">End-to-end ML pipeline — from raw data to live recommendations</p>
+
+    <div class="pipeline">
+
+      <div class="pipeline-step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">Data Collection &amp; Loading</div>
+          <div class="step-desc">The TMDB 5000 Movies dataset is loaded using Pandas.
+          It contains 5,000 films with metadata including title, genres, keywords,
+          cast, crew, and a plot overview for each.</div>
+          <span class="step-tag">pandas.read_csv()</span>
+        </div>
+      </div>
+
+      <div class="pipeline-step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">Data Preprocessing</div>
+          <div class="step-desc">JSON-encoded columns (genres, keywords) are parsed into
+          plain text. Null values are filled. Genres, keywords and overview are
+          concatenated into a single "combined features" document per movie.</div>
+          <span class="step-tag">ast.literal_eval · fillna · str concat</span>
+        </div>
+      </div>
+
+      <div class="pipeline-step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-title">TF-IDF Vectorization</div>
+          <div class="step-desc">Each movie's combined text is converted into a
+          numerical vector using Term Frequency–Inverse Document Frequency (TF-IDF).
+          Rare, discriminative words get higher weights; common stop-words are
+          ignored. Vocabulary is capped at 15,000 features with unigrams + bigrams.</div>
+          <span class="step-tag">TfidfVectorizer(max_features=15000, ngram_range=(1,2))</span>
+        </div>
+      </div>
+
+      <div class="pipeline-step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <div class="step-title">Cosine Similarity Matrix</div>
+          <div class="step-desc">A 5000 × 5000 pairwise similarity matrix is computed
+          once at startup. Each cell (i, j) holds the cosine of the angle between
+          movie i's and movie j's TF-IDF vectors — values closer to 1.0 mean
+          more similar content.</div>
+          <span class="step-tag">cosine_similarity(tfidf_matrix, tfidf_matrix)</span>
+        </div>
+      </div>
+
+      <div class="pipeline-step">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <div class="step-title">Query &amp; Rank</div>
+          <div class="step-desc">When a user enters a title, its row in the similarity
+          matrix is retrieved, sorted descending, and the top-N neighbours
+          (excluding itself) are returned — each with a match percentage, rating,
+          genre tags, and a short synopsis.</div>
+          <span class="step-tag">sorted(sim_scores, reverse=True)[1:N+1]</span>
+        </div>
+      </div>
+
+      <div class="pipeline-step">
+        <div class="step-num">6</div>
+        <div class="step-body">
+          <div class="step-title">Deployment via Flask</div>
+          <div class="step-desc">The model is served as a REST API with Flask.
+          The frontend calls <code style="color:var(--primary)">POST /recommend</code>
+          and renders results dynamically — no page reload needed. An autocomplete
+          endpoint (<code style="color:var(--primary)">GET /search</code>) enables
+          live title suggestions.</div>
+          <span class="step-tag">Flask · REST API · JSON · Vanilla JS</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</div><!-- /page -->
+
+<footer>
+  Smart Movie Recommender &nbsp;·&nbsp; Artificial Intelligence Project &nbsp;·&nbsp; 90 Hours
+  &nbsp;·&nbsp; Python · Flask · Scikit-learn
+</footer>
+
+<!-- ════════════════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════════════════ -->
+<script>
+const inputEl       = document.getElementById('movieInput');
+const acList        = document.getElementById('autocomplete');
+const feedbackEl    = document.getElementById('feedback');
+const loadingEl     = document.getElementById('loading');
+const resultsEl     = document.getElementById('results');
+const cardsEl       = document.getElementById('cards');
+const titleEl       = document.getElementById('resultsTitle');
+const countEl       = document.getElementById('resultsCount');
+
+let acTimer = null;
+
+/* ── Autocomplete ───────────────────────────────────────── */
+inputEl.addEventListener('input', () => {
+  clearTimeout(acTimer);
+  const q = inputEl.value.trim();
+  if (q.length < 2) { hideAC(); return; }
+  acTimer = setTimeout(async () => {
+    const r = await fetch(`/search?q=${encodeURIComponent(q)}`);
+    renderAC(await r.json());
+  }, 240);
+});
+
+inputEl.addEventListener('keydown', e => {
+  if (e.key === 'Enter')  { hideAC(); getRecommendations(); }
+  if (e.key === 'Escape') { hideAC(); }
+});
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-wrap')) hideAC();
+});
+
+function renderAC(titles) {
+  if (!titles.length) { hideAC(); return; }
+  acList.innerHTML = '';
+  titles.forEach(t => {
+    const li = document.createElement('li');
+    li.textContent = t;
+    li.onclick = () => { inputEl.value = t; hideAC(); getRecommendations(); };
+    acList.appendChild(li);
+  });
+  acList.classList.remove('hidden');
+}
+
+function hideAC() { acList.classList.add('hidden'); }
+
+/* ── Recommendations ────────────────────────────────────── */
+async function getRecommendations() {
+  const title = inputEl.value.trim();
+  if (!title) { showError('Please enter a movie title.'); return; }
+
+  clearUI();
+  show(loadingEl);
+
+  try {
+    const res  = await fetch('/recommend', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title })
+    });
+    const data = await res.json();
+    hide(loadingEl);
+
+    if (data.error) { showError(data.error); return; }
+    renderResults(data);
+  } catch {
+    hide(loadingEl);
+    showError('Could not reach the server. Make sure Flask is running.');
+  }
+}
+
+/* ── Render cards ───────────────────────────────────────── */
+function renderResults(data) {
+  titleEl.innerHTML = `Because you liked <strong>${esc(data.query)}</strong>:`;
+  countEl.textContent = `${data.recommendations.length} recommendations`;
+  cardsEl.innerHTML = '';
+
+  data.recommendations.forEach((m, i) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.animationDelay = `${i * 55}ms`;
+
+    const fillW = Math.round(m.similarity);
+    const ratingPill = m.rating !== 'N/A'
+      ? `<span class="pill pill-rating">★ ${m.rating}</span>` : '';
+
+    card.innerHTML = `
+      <div class="card-head">
+        <div class="card-title">${esc(m.title)}</div>
+        <div class="card-year">${esc(m.year)}</div>
+      </div>
+      <div class="card-pills">
+        <span class="pill pill-match">${m.similarity}% match</span>
+        ${ratingPill}
+      </div>
+      ${m.genres ? `<div class="card-genres">${esc(m.genres)}</div>` : ''}
+      <div class="meter-wrap">
+        <div class="meter-bar">
+          <div class="meter-fill" style="width:${fillW}%"></div>
+        </div>
+        <span class="meter-label">Similarity</span>
+      </div>
+      ${m.overview ? `<div class="card-overview">${esc(m.overview)}</div>` : ''}
+    `;
+    cardsEl.appendChild(card);
+  });
+
+  show(resultsEl);
+  resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ── Helpers ────────────────────────────────────────────── */
+function clearUI() { hide(feedbackEl); hide(resultsEl); hide(loadingEl); }
+function show(el)  { el.classList.remove('hidden'); }
+function hide(el)  { el.classList.add('hidden'); }
+
+function showError(msg) {
+  feedbackEl.textContent = msg;
+  feedbackEl.className = 'feedback error';
+  show(feedbackEl);
+}
+
+function esc(s) {
+  return String(s ?? '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
